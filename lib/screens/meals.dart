@@ -6,19 +6,24 @@ import 'package:flutter_meals/widgets/meal_item.dart';
 class MealsScreen extends StatelessWidget {
   const MealsScreen({
     super.key, 
-    required this.title,
-    required this.meals 
+    this.title,
+    required this.meals,
+    required this.onToggleFavorite
   });
 
-  final String title;
-  final List<Meal> meals; 
+  final String? title;
+  final List<Meal> meals;
+  final void Function(Meal meal) onToggleFavorite;
 
   void selectMeal(BuildContext context, Meal meal) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (ctx) => 
           MealDetailScreen(
-            meal: meal
+            meal: meal,
+            // ここでは関数の定義だけを渡してやるイメージ（ここで引数まで一緒に渡さない）
+            // 引数まで渡して実行できる関数に組み立てるのは実際に呼び出す次の画面でやる。
+            onToggleFavorite: onToggleFavorite
           )
       ),
     );
@@ -62,10 +67,14 @@ class MealsScreen extends StatelessWidget {
       );
     }
 
+    if (title == null) {
+      return  content;
+    }
+
     return Scaffold(
       appBar: AppBar(
         //変数だからconst化できない
-        title: Text(title),
+        title: Text(title!),
       ),
       body: content
     );

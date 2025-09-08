@@ -6,16 +6,31 @@ class MealDetailScreen extends StatelessWidget{
   const MealDetailScreen({
     super.key,
     required this.meal,
+    required this.onToggleFavorite
   });
 
   final Meal meal;
+  final void Function(Meal meal) onToggleFavorite;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(meal.title)
+        title: Text(meal.title),
+        actions: [
+          IconButton(
+            // 引数付きの関数を実行するためにあえて無名関数でラッピングしているだけなので、onPressed横の()には引数を入れない
+            // 以下のような実行方法をvoid callbackという
+            onPressed: () {
+              onToggleFavorite(meal);
+            },
+            icon: Icon(Icons.star),
+          )
+        ],
       ),
+      // リスト形式で見せたいが、コンテンツ量が少なくてさほどスクロールしない（ちょっとしかしない）のであれば
+      // SingleChildScrollView + Columnを使う。
+      // 逆に結構増えていく場合はListViewを使う
       body: SingleChildScrollView(
         child: Column(
           children: [
