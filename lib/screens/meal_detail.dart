@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_meals/main.dart';
 import 'package:flutter_meals/models/meal.dart';
+import 'package:flutter_meals/providers/favorites_provider.dart';
 
-class MealDetailScreen extends StatelessWidget{
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+// ConsumerWidgetはStatelessWidgetの代わり
+class MealDetailScreen extends ConsumerWidget{
   const MealDetailScreen({
     super.key,
     required this.meal,
-    required this.onToggleFavorite
   });
 
   final Meal meal;
-  final void Function(Meal meal) onToggleFavorite;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: Text(meal.title),
@@ -21,8 +23,26 @@ class MealDetailScreen extends StatelessWidget{
           IconButton(
             // 引数付きの関数を実行するためにあえて無名関数でラッピングしているだけなので、onPressed横の()には引数を入れない
             // 以下のような実行方法をvoid callbackという
+            // onPressed: () {
+            //   onToggleFavorite(meal);
+            // },
+
+            // イベントハンドラの中では継続的監視ではなく、一度だけ読み取って実行する、readを使う。
+            // (watchを使うと変化があるたびにリビルドが走るので、不具合の温床になってしまうらしい)
+            // 公式でもイベントハンドラ内ではreadを使うことを推奨している
             onPressed: () {
-              onToggleFavorite(meal);
+              final wasAdded = ref
+                .read(favoriteMealsProvider.notifier)
+                .toggleMealsFavoriteStatus(meal);
+                
+                ScaffoldMessenger.of(context).clearSnackBars(); // 初期化
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      wasAdded ? 'Meal added!!' : 'Meal removed!!',
+                    ),
+                  ),
+                );
             },
             icon: Icon(Icons.star),
           )

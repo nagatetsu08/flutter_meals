@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_meals/data/dummy_data.dart';
-import 'package:flutter_meals/models/meal.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:flutter_meals/screens/categories.dart';
 import 'package:flutter_meals/screens/filters.dart';
 import 'package:flutter_meals/screens/meals.dart';
 import 'package:flutter_meals/widgets/main_drawer.dart';
+
+import 'package:flutter_meals/providers/meals_provider.dart';
+import 'package:flutter_meals/providers/favorites_provider.dart';
+import 'package:flutter_meals/providers/filters_provider.dart';
 
 // 先頭にkがつくと、flutterでグローバル変数扱いになる
 const kInitialFilters = {
@@ -14,51 +18,18 @@ const kInitialFilters = {
   Filter.vegan: false
 };
 
-class TabScreen extends StatefulWidget{
-  const TabScreen({super.key});
+  class TabScreen extends ConsumerStatefulWidget{
+    const TabScreen({super.key});
 
   @override
-  State<TabScreen> createState() {
+  ConsumerState<TabScreen> createState() {
     return _TabScreenState();
   }
 }
 
-class _TabScreenState extends State<TabScreen> {
+class _TabScreenState extends ConsumerState<TabScreen> {
 
   int _selectedPageIndex = 0;
-  final List<Meal> _favoriteMeals = [];
-
-  Map<Filter, bool> _selectedFilters = kInitialFilters;
-
-  void _showInfoMessage(String message) {
-    // 画面の下からにょきっとでてくるやつ
-    ScaffoldMessenger.of(context).clearSnackBars(); // 初期化
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-        ),
-      ),
-    );
-  }
-
-  void _toggleMealFavoriteStatus(Meal meal) {
-    // containsはオブジェクト丸ごと渡す必要がある
-    final isExisting = _favoriteMeals.contains(meal);
-
-    if(isExisting == true) {
-      setState(() {
-        _favoriteMeals.remove(meal);
-      });
-      _showInfoMessage('Meal is no longer a favorite');
-    } else {
-      setState(() {
-        _favoriteMeals.add(meal);
-      });
-      _showInfoMessage('Marked as favorite');
-    }
-  }
-
 
   void _selectedPage(int index) {
     setState(() {
@@ -71,18 +42,13 @@ class _TabScreenState extends State<TabScreen> {
       Navigator.of(context).pop(); //これがないと戻ってきた際にドロワーが開いた状態になってしまうので、先に呼び出しておく
       // 返ってきたときのアクションを同期的に扱うため、関数をasync化して、awaitで受け取る
       // 実はpushはFetureを返し、型も<T?>となっているので、わかっていれば返してくる型も指定できる。
-      final result = await Navigator.of(context).push<Map<Filter, bool>>(
+      await Navigator.of(context).push<Map<Filter, bool>>(
         MaterialPageRoute(
-          // 変数渡しているからconstにできない
-          builder: (ctx) => FiltersScreen(
-            currentFilters: _selectedFilters,
+          // river_podで渡す変数の中身をprovier管理下においたので、変数を渡さなくて良くなり、const化できるようになった
+          builder: (ctx) => const FiltersScreen(
           ),
         ),
-      );
-      setState(() {
-        _selectedFilters = result ?? kInitialFilters;  
-      });
-      
+      );      
       // 余談だが、pushをpushReplacementにすると戻る操作をできなくすることができる。
     } else {
       // elseにくる=今Category画面にいるのでドロワーを閉じるだけでいい
@@ -93,40 +59,41 @@ class _TabScreenState extends State<TabScreen> {
   @override
   Widget build(BuildContext context) {
 
-    final availableMeals = dummyMeals.where((meal) {
+    // build配下ではデータの読み込みが1回だけだとしても、Rivercpodの公式にはwatchを使うように指示がある。
+    final meals = ref.watch(mealsProvider);
+    final activeFilters = ref.watch(filtersProvider);
+
+    final availableMeals = meals.where((meal) {
       // グルテンフリーのフラグが渡ってきていて、かつ個々のmealがグルテンフリーフラグを持っていたら
       // 初期値を上で設定しているからnullになりえない。したがって、!をつけていい
       // trueが返ったときだけ表示される。表示したいのは以下2パターン
       // 1._selectedFilters[Filter.glutenFree]がtrueでない。
       // 2._selectedFilters[Filter.glutenFree]がtrueで、meal.isGlutenFreeがTrueのとき
       // 逆を返せば、selectedFilters[Filter.glutenFree]がtrueで、meal.isGlutenFreeがFalseのときだけ見せたくない（このときだけfalseを返せばいい）
-      if(_selectedFilters[Filter.glutenFree]! && !meal.isGlutenFree) {
+      if(activeFilters[Filter.glutenFree]! && !meal.isGlutenFree) {
         return false;
       }
-      if(_selectedFilters[Filter.lactoseFree]! && !meal.isLactoseFree) {
+      if(activeFilters[Filter.lactoseFree]! && !meal.isLactoseFree) {
         return false;
       }
-      if(_selectedFilters[Filter.vegetarian]! && !meal.isVegetarian) {
+      if(activeFilters[Filter.vegetarian]! && !meal.isVegetarian) {
         return false;
       }
-      if(_selectedFilters[Filter.vegan]! && !meal.isVegan) {
+      if(activeFilters[Filter.vegan]! && !meal.isVegan) {
         return false;
       }
       return true;
-    })
-    .toList();
+    }).toList();
 
     Widget activePage = CategoriesScreen(
-      onToggleFavorite: _toggleMealFavoriteStatus,
-      availableMeals: availableMeals
+      availableMeals: availableMeals,
     );
     var activePageTitle = 'Categories';
 
     if(_selectedPageIndex == 1) {
+      final favoriteMeals = ref.watch(favoriteMealsProvider);
       activePage = MealsScreen(
-        meals: _favoriteMeals,
-        // ここでも渡すのは関数定義のみ（引数まで定義しなくてOK）
-        onToggleFavorite: _toggleMealFavoriteStatus,
+        meals: favoriteMeals,
       );
       activePageTitle = 'Favorites';
     }

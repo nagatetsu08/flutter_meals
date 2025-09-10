@@ -8,12 +8,10 @@ class MealsScreen extends StatelessWidget {
     super.key, 
     this.title,
     required this.meals,
-    required this.onToggleFavorite
   });
 
   final String? title;
   final List<Meal> meals;
-  final void Function(Meal meal) onToggleFavorite;
 
   void selectMeal(BuildContext context, Meal meal) {
     Navigator.of(context).push(
@@ -21,9 +19,6 @@ class MealsScreen extends StatelessWidget {
         builder: (ctx) => 
           MealDetailScreen(
             meal: meal,
-            // ここでは関数の定義だけを渡してやるイメージ（ここで引数まで一緒に渡さない）
-            // 引数まで渡して実行できる関数に組み立てるのは実際に呼び出す次の画面でやる。
-            onToggleFavorite: onToggleFavorite
           )
       ),
     );

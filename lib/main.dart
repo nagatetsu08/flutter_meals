@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:flutter_meals/screens/categories.dart';
 import 'package:flutter_meals/screens/tabs.dart';
 
@@ -14,8 +16,13 @@ final theme = ThemeData(
   textTheme: GoogleFonts.latoTextTheme(),
 );
 
+// RiverPodをアプリで使えるようにするために、ProviderScopeでラッピングしてやる
 void main() {
-  runApp(const App());
+  runApp(
+    const ProviderScope(
+      child: App()
+    ),
+  );
 }
 
 class App extends StatelessWidget {
