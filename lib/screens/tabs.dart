@@ -6,7 +6,6 @@ import 'package:flutter_meals/screens/filters.dart';
 import 'package:flutter_meals/screens/meals.dart';
 import 'package:flutter_meals/widgets/main_drawer.dart';
 
-import 'package:flutter_meals/providers/meals_provider.dart';
 import 'package:flutter_meals/providers/favorites_provider.dart';
 import 'package:flutter_meals/providers/filters_provider.dart';
 
@@ -48,7 +47,7 @@ class _TabScreenState extends ConsumerState<TabScreen> {
           builder: (ctx) => const FiltersScreen(
           ),
         ),
-      );      
+      );        
       // 余談だが、pushをpushReplacementにすると戻る操作をできなくすることができる。
     } else {
       // elseにくる=今Category画面にいるのでドロワーを閉じるだけでいい
@@ -59,31 +58,9 @@ class _TabScreenState extends ConsumerState<TabScreen> {
   @override
   Widget build(BuildContext context) {
 
-    // build配下ではデータの読み込みが1回だけだとしても、Rivercpodの公式にはwatchを使うように指示がある。
-    final meals = ref.watch(mealsProvider);
-    final activeFilters = ref.watch(filtersProvider);
-
-    final availableMeals = meals.where((meal) {
-      // グルテンフリーのフラグが渡ってきていて、かつ個々のmealがグルテンフリーフラグを持っていたら
-      // 初期値を上で設定しているからnullになりえない。したがって、!をつけていい
-      // trueが返ったときだけ表示される。表示したいのは以下2パターン
-      // 1._selectedFilters[Filter.glutenFree]がtrueでない。
-      // 2._selectedFilters[Filter.glutenFree]がtrueで、meal.isGlutenFreeがTrueのとき
-      // 逆を返せば、selectedFilters[Filter.glutenFree]がtrueで、meal.isGlutenFreeがFalseのときだけ見せたくない（このときだけfalseを返せばいい）
-      if(activeFilters[Filter.glutenFree]! && !meal.isGlutenFree) {
-        return false;
-      }
-      if(activeFilters[Filter.lactoseFree]! && !meal.isLactoseFree) {
-        return false;
-      }
-      if(activeFilters[Filter.vegetarian]! && !meal.isVegetarian) {
-        return false;
-      }
-      if(activeFilters[Filter.vegan]! && !meal.isVegan) {
-        return false;
-      }
-      return true;
-    }).toList();
+    // 2つ以上の関係し合うプロバイダーを使って、リスト取得処理が書かれていた。
+    // それをfilters_providerに処理後と移植し、filterdMealProviderとして新しいプロバイダーを定義した。
+    final availableMeals = ref.watch(filterdMealProvider);
 
     Widget activePage = CategoriesScreen(
       availableMeals: availableMeals,
